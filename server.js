@@ -1,5 +1,5 @@
 require("dotenv").config();
-require("./db");
+const db = require("./db");
 const express = require("express");
 const crypto = require("crypto");
 
@@ -137,6 +137,49 @@ app.get("/recentes", async (req, res) => {
     }));
 
     res.json(recentes);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Algo deu errado no servidor.");
+  }
+});
+
+app.get("/sincronizar", async (req, res) => {
+  if (!tokens) return res.redirect("/login");
+
+  try {
+    const resposta = await fetch(
+      "https://api.spotify.com/v1/me/player/recently-played?limit=50",
+      { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      console.error("Erro do Spotify:", dados.error);
+      return res.status(resposta.status).send("Erro ao buscar o histórico.");
+    }
+
+    const inserir = db.prepare(`
+      INSERT OR IGNORE INTO plays
+        (track_id, musica, artista, tocada_em, origem, origem_uri)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    let novas = 0;
+    for (const item of dados.items) {
+      const resultado = inserir.run(
+        item.track.id,
+        item.track.name,
+        item.track.artists.map((a) => a.name).join(", "),
+        item.played_at,
+        item.context ? item.context.type : null,
+        item.context ? item.context.uri : null
+      );
+      novas += resultado.changes;
+    }
+
+    const total = db.prepare("SELECT COUNT(*) AS total FROM plays").get().total;
+    res.json({ novas, total });
   } catch (err) {
     console.error(err);
     res.status(500).send("Algo deu errado no servidor.");
