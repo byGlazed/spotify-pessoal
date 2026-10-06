@@ -8,7 +8,6 @@ const PORT = 3000;
 const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI } =
   process.env;
 
-// Permissões que o app vai pedir (a gente usa todas nos próximos passos)
 const SCOPES = [
   "playlist-read-private",
   "playlist-modify-private",
@@ -19,8 +18,8 @@ const SCOPES = [
   "user-read-currently-playing",
 ].join(" ");
 
-let estadoLogin = null; // código aleatório de segurança
-let tokens = null; // por enquanto os tokens ficam só na memória
+let estadoLogin = null;
+let tokens = null;
 
 app.get("/", (req, res) => {
   res.send('Servidor no ar! <a href="/login">Entrar com Spotify</a>');
@@ -106,6 +105,37 @@ app.get("/playlists", async (req, res) => {
     }));
 
     res.json(playlists);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Algo deu errado no servidor.");
+  }
+});
+
+app.get("/recentes", async (req, res) => {
+  if (!tokens) return res.redirect("/login");
+
+  try {
+    const resposta = await fetch(
+      "https://api.spotify.com/v1/me/player/recently-played?limit=50",
+      { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      console.error("Erro do Spotify:", dados.error);
+      return res.status(resposta.status).send("Erro ao buscar o histórico.");
+    }
+
+    const recentes = dados.items.map((item) => ({
+      musica: item.track.name,
+      artista: item.track.artists.map((a) => a.name).join(", "),
+      tocadaEm: item.played_at,
+      origem: item.context ? item.context.type : null,
+      origemUri: item.context ? item.context.uri : null,
+    }));
+
+    res.json(recentes);
   } catch (err) {
     console.error(err);
     res.status(500).send("Algo deu errado no servidor.");
