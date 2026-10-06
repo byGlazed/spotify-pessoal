@@ -186,6 +186,22 @@ app.get("/sincronizar", async (req, res) => {
   }
 });
 
+app.get("/top", (req, res) => {
+  const top = db
+    .prepare(
+      `
+      SELECT musica, artista, COUNT(*) AS plays
+      FROM plays
+      GROUP BY track_id, musica, artista
+      ORDER BY plays DESC
+      LIMIT 10
+    `
+    )
+    .all();
+
+  res.json(top);
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://127.0.0.1:${PORT}`);
 });
