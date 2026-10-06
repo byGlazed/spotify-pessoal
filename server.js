@@ -67,6 +67,7 @@ app.get("/callback", async (req, res) => {
     const dados = await resposta.json();
 
     if (!resposta.ok) {
+      console.error("Erro do Spotify:", dados.error, dados.error_description);
       return res
         .status(400)
         .send(`Erro ao pegar o token: ${dados.error_description || dados.error}`);
@@ -75,6 +76,36 @@ app.get("/callback", async (req, res) => {
     tokens = dados;
     console.log("Login feito! Token recebido.");
     res.send("Login com Spotify feito! Pode fechar esta aba.");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Algo deu errado no servidor.");
+  }
+});
+
+app.get("/playlists", async (req, res) => {
+  if (!tokens) return res.redirect("/login");
+
+  try {
+    const resposta = await fetch(
+      "https://api.spotify.com/v1/me/playlists?limit=50",
+      { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      console.error("Erro do Spotify:", dados.error);
+      return res.status(resposta.status).send("Erro ao buscar as playlists.");
+    }
+
+    const playlists = dados.items.filter(Boolean).map((p) => ({
+      nome: p.name,
+      id: p.id,
+      dono: p.owner?.display_name,
+      capa: p.images?.[0]?.url,
+    }));
+
+    res.json(playlists);
   } catch (err) {
     console.error(err);
     res.status(500).send("Algo deu errado no servidor.");
