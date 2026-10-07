@@ -7,6 +7,8 @@ const db = require("./db");
 const app = express();
 const PORT = 3000;
 
+app.use(express.static("public")); // serve a interface (pasta public)
+
 const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI } =
   process.env;
 

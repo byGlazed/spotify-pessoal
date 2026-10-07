@@ -1,0 +1,183 @@
+/* ---------- Cores e configurações gerais ---------- */
+:root {
+  --verde: #1db954;
+  --fundo: #303030;
+  --fundo-lateral: #262626;
+  --cinza-claro: #d9d9d9;
+  --texto: #ffffff;
+  --texto-fraco: #b3b3b3;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  height: 100vh;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--fundo);
+  color: var(--texto);
+
+  /* A tela é dividida em 4 áreas: topo, lateral, centro e player */
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: 56px 1fr 72px;
+  grid-template-areas:
+    "topo topo"
+    "lateral principal"
+    "player player";
+}
+
+/* ---------- Peças que se repetem ---------- */
+.botao-redondo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--verde);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--verde);
+  font-size: 18px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.botao-redondo:hover {
+  background: var(--verde);
+  color: var(--fundo);
+}
+
+.capa {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: var(--cinza-claro);
+}
+
+.capa.grande {
+  width: 96px;
+  height: 96px;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.info span {
+  color: var(--texto-fraco);
+  font-size: 14px;
+}
+
+/* ---------- Topo ---------- */
+.topo {
+  grid-area: topo;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+  background: #ffffff;
+}
+
+.topo-direita {
+  display: flex;
+  gap: 12px;
+}
+
+.busca {
+  width: 100%;
+  max-width: 460px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--cinza-claro);
+  font-size: 16px;
+}
+
+/* ---------- Lateral (top 10) ---------- */
+.lateral {
+  grid-area: lateral;
+  padding: 24px 16px;
+  background: var(--fundo-lateral);
+  border-right: 1px solid #444;
+  overflow-y: auto;
+}
+
+.lateral h2 {
+  margin-bottom: 20px;
+  color: var(--verde);
+  font-weight: 400;
+}
+
+.lateral ol {
+  list-style: none;
+}
+
+.item-musica {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.item-musica .info {
+  flex: 1;
+}
+
+.contagem {
+  color: var(--texto-fraco);
+}
+
+/* ---------- Centro (ranking de playlists) ---------- */
+.principal {
+  grid-area: principal;
+  padding: 32px 48px;
+  overflow-y: auto;
+}
+
+.titulo-secao {
+  margin-bottom: 28px;
+  color: var(--texto-fraco);
+  font-weight: 400;
+}
+
+.principal ul {
+  list-style: none;
+}
+
+.item-playlist {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ---------- Player (rodapé) ---------- */
+.player {
+  grid-area: player;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  background: var(--cinza-claro);
+  color: #111;
+}
+
+.player .info {
+  flex: 1;
+}
+
+.player .info span {
+  color: #555;
+}
+
+.player .botao-redondo {
+  border-color: #111;
+  color: #111;
+}
