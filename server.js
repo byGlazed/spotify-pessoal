@@ -239,6 +239,60 @@ app.get("/sincronizar", async (req, res) => {
   }
 });
 
+app.get("/ranking-playlists", async (req, res) => {
+  try {
+    const r = await spotify("/me/playlists?limit=50");
+    if (!r) return res.redirect("/login");
+
+    if (!r.ok) {
+      console.error("Erro do Spotify:", r.dados.error);
+      return res.status(r.status).send("Erro ao buscar as playlists.");
+    }
+
+    // Monta um "dicionário": endereço da playlist -> nome e capa
+    const infoPorUri = {};
+    for (const p of r.dados.items.filter(Boolean)) {
+      infoPorUri[p.uri] = { nome: p.name, capa: p.images?.[0]?.url };
+    }
+
+    // Quais playlists mais tiveram plays no banco
+    const ranking = db
+      .prepare(
+        `
+        SELECT origem_uri, COUNT(*) AS plays
+        FROM plays
+        WHERE origem = 'playlist'
+        GROUP BY origem_uri
+        ORDER BY plays DESC
+        LIMIT 6
+      `
+      )
+      .all();
+
+    // Qual a música mais tocada dentro de cada playlist
+    const maisTocada = db.prepare(`
+      SELECT musica, artista, COUNT(*) AS vezes
+      FROM plays
+      WHERE origem_uri = ?
+      GROUP BY track_id, musica, artista
+      ORDER BY vezes DESC
+      LIMIT 1
+    `);
+
+    const resultado = ranking.map((linha) => ({
+      nome: infoPorUri[linha.origem_uri]?.nome || "Playlist desconhecida",
+      capa: infoPorUri[linha.origem_uri]?.capa || null,
+      plays: linha.plays,
+      musicaMaisTocada: maisTocada.get(linha.origem_uri),
+    }));
+
+    res.json(resultado);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Algo deu errado no servidor.");
+  }
+});
+
 app.get("/top", (req, res) => {
   const top = db
     .prepare(
