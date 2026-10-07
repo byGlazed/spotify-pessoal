@@ -181,3 +181,12 @@ body {
   border-color: #111;
   color: #111;
 }
+
+/* ---------- Ajustes para dados reais ---------- */
+img.capa {
+  object-fit: cover;
+}
+
+.aviso {
+  color: var(--texto-fraco);
+}

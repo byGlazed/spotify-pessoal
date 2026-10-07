@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spotify Pessoal</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
   </head>
   <body>
     <!-- BARRA DO TOPO -->
@@ -19,71 +20,16 @@
       </div>
     </header>
 
-    <!-- LATERAL: TOP 10 -->
+    <!-- LATERAL: TOP 10 (preenchido pelo app.js) -->
     <aside class="lateral">
       <h2>Seu top 10 all-time</h2>
-
-      <ol id="lista-top">
-        <li class="item-musica">
-          <div class="capa"></div>
-          <div class="info">
-            <strong>Sex on fire</strong>
-            <span>Kings of Leon</span>
-          </div>
-          <span class="contagem">93</span>
-        </li>
-        <li class="item-musica">
-          <div class="capa"></div>
-          <div class="info">
-            <strong>Música</strong>
-            <span>Artista</span>
-          </div>
-          <span class="contagem">81</span>
-        </li>
-        <li class="item-musica">
-          <div class="capa"></div>
-          <div class="info">
-            <strong>Música</strong>
-            <span>Artista</span>
-          </div>
-          <span class="contagem">79</span>
-        </li>
-      </ol>
+      <ol id="lista-top"></ol>
     </aside>
 
-    <!-- CENTRO: RANKING DE PLAYLISTS -->
+    <!-- CENTRO: RANKING DE PLAYLISTS (preenchido pelo app.js) -->
     <main class="principal">
       <h2 class="titulo-secao">Rank das suas playlists mais tocadas:</h2>
-
-      <ul id="lista-playlists">
-        <li class="item-playlist">
-          <button class="botao-redondo" title="Organizar playlist">⚙️</button>
-          <button class="botao-redondo" title="Tocar">▶</button>
-          <div class="capa grande"></div>
-          <div class="info">
-            <strong>Playlist 1</strong>
-            <span>Música mais tocada: ...... (11 vezes)</span>
-          </div>
-        </li>
-        <li class="item-playlist">
-          <button class="botao-redondo" title="Organizar playlist">⚙️</button>
-          <button class="botao-redondo" title="Tocar">▶</button>
-          <div class="capa grande"></div>
-          <div class="info">
-            <strong>Playlist 2</strong>
-            <span>Música mais tocada: ...... (8 vezes)</span>
-          </div>
-        </li>
-        <li class="item-playlist">
-          <button class="botao-redondo" title="Organizar playlist">⚙️</button>
-          <button class="botao-redondo" title="Tocar">▶</button>
-          <div class="capa grande"></div>
-          <div class="info">
-            <strong>Playlist 3</strong>
-            <span>Música mais tocada: ...... (5 vezes)</span>
-          </div>
-        </li>
-      </ul>
+      <ul id="lista-playlists"></ul>
     </main>
 
     <!-- RODAPÉ: PLAYER -->
