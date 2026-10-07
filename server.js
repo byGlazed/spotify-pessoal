@@ -97,6 +97,39 @@ async function spotify(caminho) {
   return { ok: resposta.ok, status: resposta.status, dados };
 }
 
+// Busca o histórico recente e guarda no banco.
+// Devolve { novas, total } ou null se não tiver login.
+async function sincronizar() {
+  const r = await spotify("/me/player/recently-played?limit=50");
+  if (!r) return null;
+
+  if (!r.ok) {
+    throw new Error(`Spotify respondeu ${r.status}: ${JSON.stringify(r.dados.error)}`);
+  }
+
+  const inserir = db.prepare(`
+    INSERT OR IGNORE INTO plays
+      (track_id, musica, artista, tocada_em, origem, origem_uri)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  let novas = 0;
+  for (const item of r.dados.items) {
+    const resultado = inserir.run(
+      item.track.id,
+      item.track.name,
+      item.track.artists.map((a) => a.name).join(", "),
+      item.played_at,
+      item.context ? item.context.type : null,
+      item.context ? item.context.uri : null
+    );
+    novas += resultado.changes;
+  }
+
+  const total = db.prepare("SELECT COUNT(*) AS total FROM plays").get().total;
+  return { novas, total };
+}
+
 // ---------- Rotas ----------
 
 app.get("/", (req, res) => {
@@ -197,38 +230,12 @@ app.get("/recentes", async (req, res) => {
 
 app.get("/sincronizar", async (req, res) => {
   try {
-    const r = await spotify("/me/player/recently-played?limit=50");
-    if (!r) return res.redirect("/login");
-
-    if (!r.ok) {
-      console.error("Erro do Spotify:", r.dados.error);
-      return res.status(r.status).send("Erro ao buscar o histórico.");
-    }
-
-    const inserir = db.prepare(`
-      INSERT OR IGNORE INTO plays
-        (track_id, musica, artista, tocada_em, origem, origem_uri)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    let novas = 0;
-    for (const item of r.dados.items) {
-      const resultado = inserir.run(
-        item.track.id,
-        item.track.name,
-        item.track.artists.map((a) => a.name).join(", "),
-        item.played_at,
-        item.context ? item.context.type : null,
-        item.context ? item.context.uri : null
-      );
-      novas += resultado.changes;
-    }
-
-    const total = db.prepare("SELECT COUNT(*) AS total FROM plays").get().total;
-    res.json({ novas, total });
+    const resultado = await sincronizar();
+    if (!resultado) return res.redirect("/login");
+    res.json(resultado);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Algo deu errado no servidor.");
+    res.status(500).send("Erro ao sincronizar.");
   }
 });
 
@@ -248,6 +255,26 @@ app.get("/top", (req, res) => {
   res.json(top);
 });
 
+const INTERVALO_MINUTOS = 15;
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://127.0.0.1:${PORT}`);
+
+  const rodarSincronizacao = async () => {
+    try {
+      const resultado = await sincronizar();
+      if (!resultado) {
+        console.log("Sincronização automática: faça login em /login.");
+        return;
+      }
+      console.log(
+        `Sincronização automática: ${resultado.novas} novas (total ${resultado.total}).`
+      );
+    } catch (err) {
+      console.error("Erro na sincronização automática:", err.message);
+    }
+  };
+
+  rodarSincronizacao(); // roda uma vez ao ligar
+  setInterval(rodarSincronizacao, INTERVALO_MINUTOS * 60 * 1000);
 });
