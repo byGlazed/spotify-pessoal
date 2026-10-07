@@ -17,6 +17,34 @@ function criar(tag, classe, texto) {
   return elemento;
 }
 
+// Cria a capa: uma <img> se tiver endereço, ou um quadrado cinza se não tiver
+function criarCapa(url) {
+  if (!url) return criar("div", "capa");
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = "";
+  img.className = "capa";
+  return img;
+}
+
+// Transforma milissegundos em "m:ss"
+function formatarTempo(ms) {
+  const totalSegundos = Math.floor((ms || 0) / 1000);
+  const minutos = Math.floor(totalSegundos / 60);
+  const segundos = String(totalSegundos % 60).padStart(2, "0");
+  return `${minutos}:${segundos}`;
+}
+
+function mostrarMensagem(texto) {
+  document.getElementById("mensagem").textContent = texto;
+}
+
+// ---------- Estado do player ----------
+
+let estadoAtual = null; // última resposta de /player
+let momentoEstado = 0; // hora em que recebemos essa resposta
+const playlistsNaTela = []; // { uri, botao, disco } de cada playlist do ranking
+
 // ---------- Top 10 (lateral) ----------
 
 async function carregarTop() {
@@ -37,7 +65,7 @@ async function carregarTop() {
       const info = criar("div", "info");
       info.append(criar("strong", null, m.musica), criar("span", null, m.artista));
 
-      item.append(criar("div", "capa"), info, criar("span", "contagem", m.plays));
+      item.append(criarCapa(m.capa), info, criar("span", "contagem", m.plays));
       lista.append(item);
     }
   } catch (erro) {
@@ -69,17 +97,12 @@ async function carregarRanking() {
       engrenagem.title = "Organizar playlist";
 
       const tocar = criar("button", "botao-redondo", "▶");
-      tocar.title = "Tocar";
+      tocar.title = "Tocar / Pausar";
+      tocar.addEventListener("click", () => cliqueNaPlaylist(p.uri));
 
-      let capa;
-      if (p.capa) {
-        capa = document.createElement("img");
-        capa.src = p.capa;
-        capa.alt = "";
-        capa.className = "capa grande";
-      } else {
-        capa = criar("div", "capa grande");
-      }
+      // O "disco" é a capa dentro de uma moldura que vira vinil e gira
+      const disco = criar("div", "disco grande");
+      disco.append(criarCapa(p.capa));
 
       const m = p.musicaMaisTocada;
       const detalhe = m
@@ -89,9 +112,13 @@ async function carregarRanking() {
       const info = criar("div", "info");
       info.append(criar("strong", null, p.nome), criar("span", null, detalhe));
 
-      item.append(engrenagem, tocar, capa, info);
+      item.append(engrenagem, tocar, disco, info);
       lista.append(item);
+
+      playlistsNaTela.push({ uri: p.uri, botao: tocar, disco });
     }
+
+    desenharPlayer(); // já marca qual playlist está tocando
   } catch (erro) {
     // Se você não estiver logado, o servidor redireciona pro Spotify e o
     // navegador bloqueia: cai aqui.
@@ -102,7 +129,153 @@ async function carregarRanking() {
   }
 }
 
+// ---------- Controles ----------
+
+// Clique no ▶/⏸ de uma playlist
+function cliqueNaPlaylist(uri) {
+  const ativo = estadoAtual && estadoAtual.ativo;
+
+  if (ativo && estadoAtual.contextoUri === uri) {
+    // Essa playlist já é a atual: alterna entre pausar e continuar
+    controlar(estadoAtual.tocando ? "pausar" : "continuar");
+  } else {
+    tocarPlaylist(uri);
+  }
+}
+
+async function tocarPlaylist(uri) {
+  mostrarMensagem("Pedindo ao Spotify pra tocar...");
+
+  try {
+    const resposta = await fetch("/tocar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uri }),
+    });
+    const dados = await resposta.json();
+    mostrarMensagem(resposta.ok ? "" : dados.erro);
+  } catch (erro) {
+    console.error(erro);
+    mostrarMensagem("Não consegui falar com o servidor.");
+  }
+
+  setTimeout(atualizarPlayer, 1000);
+}
+
+// acao: "pausar", "continuar", "proxima" ou "anterior"
+async function controlar(acao) {
+  try {
+    const resposta = await fetch("/controle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao }),
+    });
+
+    if (resposta.ok) {
+      mostrarMensagem("");
+    } else {
+      const dados = await resposta.json();
+      mostrarMensagem(dados.erro);
+    }
+  } catch (erro) {
+    console.error(erro);
+    mostrarMensagem("Não consegui falar com o servidor.");
+  }
+
+  setTimeout(atualizarPlayer, 600);
+}
+
+document.getElementById("btn-play").addEventListener("click", () => {
+  if (estadoAtual && estadoAtual.ativo) {
+    controlar(estadoAtual.tocando ? "pausar" : "continuar");
+  } else {
+    mostrarMensagem("Nada tocando. Abra o Spotify e toque algo, ou clique em ▶ numa playlist.");
+  }
+});
+document.getElementById("btn-proxima").addEventListener("click", () => controlar("proxima"));
+document.getElementById("btn-anterior").addEventListener("click", () => controlar("anterior"));
+
+// ---------- Player (rodapé) ----------
+
+// Pergunta ao servidor o que está tocando
+async function atualizarPlayer() {
+  if (document.hidden) return; // aba escondida: não gasta chamadas à toa
+
+  try {
+    const resposta = await fetch("/player");
+    estadoAtual = resposta.ok ? await resposta.json() : null;
+    momentoEstado = Date.now();
+  } catch (erro) {
+    console.error(erro);
+    estadoAtual = null;
+  }
+
+  desenharPlayer();
+}
+
+// Atualiza a tela com o estado atual
+function desenharPlayer() {
+  const ativo = Boolean(estadoAtual && estadoAtual.ativo);
+  const tocando = ativo && estadoAtual.tocando;
+
+  document.getElementById("player-musica").textContent = ativo
+    ? estadoAtual.musica
+    : "Nada tocando";
+  document.getElementById("player-artista").textContent = ativo
+    ? estadoAtual.artista
+    : "Abra o Spotify em um aparelho e toque algo";
+  document.getElementById("btn-play").textContent = tocando ? "⏸" : "▶";
+
+  // Capa do player (vira vinil e gira enquanto toca)
+  const capa = document.getElementById("player-capa");
+  if (ativo && estadoAtual.capa) {
+    capa.src = estadoAtual.capa;
+    capa.style.visibility = "visible";
+  } else {
+    capa.style.visibility = "hidden";
+  }
+  const discoPlayer = document.getElementById("player-disco");
+  discoPlayer.classList.toggle("ativo", ativo);
+  discoPlayer.classList.toggle("girando", tocando);
+
+  // Playlists do ranking: a que está tocando vira vinil e o botão vira ⏸
+  for (const p of playlistsNaTela) {
+    const eEssa = ativo && estadoAtual.contextoUri === p.uri;
+    p.botao.textContent = eEssa && tocando ? "⏸" : "▶";
+    p.disco.classList.toggle("ativo", eEssa);
+    p.disco.classList.toggle("girando", eEssa && tocando);
+  }
+
+  desenharProgresso();
+}
+
+// Atualiza só a barra de progresso (roda várias vezes por segundo)
+function desenharProgresso() {
+  const ativo = Boolean(estadoAtual && estadoAtual.ativo);
+  const atual = document.getElementById("tempo-atual");
+  const total = document.getElementById("tempo-total");
+  const barra = document.getElementById("barra-preenchida");
+
+  if (!ativo) {
+    atual.textContent = "0:00";
+    total.textContent = "0:00";
+    barra.style.width = "0%";
+    return;
+  }
+
+  let ms = estadoAtual.progressoMs;
+  if (estadoAtual.tocando) ms += Date.now() - momentoEstado; // anda sozinho entre as consultas
+  ms = Math.min(ms, estadoAtual.duracaoMs);
+
+  atual.textContent = formatarTempo(ms);
+  total.textContent = formatarTempo(estadoAtual.duracaoMs);
+  barra.style.width = `${(ms / estadoAtual.duracaoMs) * 100}%`;
+}
+
 // ---------- Começa tudo quando a página abre ----------
 
 carregarTop();
 carregarRanking();
+atualizarPlayer();
+setInterval(atualizarPlayer, 3000); // pergunta ao Spotify a cada 3 segundos
+setInterval(desenharProgresso, 500); // anda a barrinha suavemente

@@ -29,17 +29,39 @@
     <!-- CENTRO: RANKING DE PLAYLISTS (preenchido pelo app.js) -->
     <main class="principal">
       <h2 class="titulo-secao">Rank das suas playlists mais tocadas:</h2>
+      <p id="mensagem" class="aviso"></p>
       <ul id="lista-playlists"></ul>
     </main>
 
     <!-- RODAPÉ: PLAYER -->
     <footer class="player">
-      <div class="capa"></div>
-      <div class="info">
-        <strong>Sex on fire</strong>
-        <span>Kings of Leon</span>
+      <!-- Esquerda: capa e nome da música -->
+      <div class="player-musica">
+        <div id="player-disco" class="disco pequeno">
+          <img id="player-capa" class="capa" alt="" style="visibility: hidden" />
+        </div>
+        <div class="info">
+          <strong id="player-musica">Nada tocando</strong>
+          <span id="player-artista"></span>
+        </div>
       </div>
-      <button class="botao-redondo" title="Pausar">⏸</button>
+
+      <!-- Centro: botões e barra de progresso -->
+      <div class="player-centro">
+        <div class="controles">
+          <button id="btn-anterior" class="botao-controle" title="Anterior">⏮</button>
+          <button id="btn-play" class="botao-play" title="Tocar / Pausar">▶</button>
+          <button id="btn-proxima" class="botao-controle" title="Próxima">⏭</button>
+        </div>
+        <div class="progresso">
+          <span id="tempo-atual">0:00</span>
+          <div class="barra"><div id="barra-preenchida"></div></div>
+          <span id="tempo-total">0:00</span>
+        </div>
+      </div>
+
+      <!-- Direita: espaço reservado (volume e aparelhos, mais pra frente) -->
+      <div class="player-direita"></div>
     </footer>
   </body>
 </html>

@@ -15,4 +15,11 @@ db.exec(`
   )
 `);
 
+// Atualização do banco: adiciona a coluna da capa se ainda não existir.
+// (Quem já tem o banco criado ganha a coluna nova sem perder nenhum play.)
+const colunas = db.prepare("PRAGMA table_info(plays)").all();
+if (!colunas.some((coluna) => coluna.name === "capa")) {
+  db.exec("ALTER TABLE plays ADD COLUMN capa TEXT");
+}
+
 module.exports = db;

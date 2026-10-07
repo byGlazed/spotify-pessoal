@@ -8,6 +8,7 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.static("public")); // serve a interface (pasta public)
+app.use(express.json()); // permite receber dados em JSON (usado no botão de tocar)
 
 const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI } =
   process.env;
@@ -88,14 +89,29 @@ async function tokenValido() {
 
 // Faz uma chamada à API do Spotify já com o token certo.
 // Devolve null se não tiver login.
-async function spotify(caminho) {
+// Por padrão faz um GET. Pra outros tipos de chamada (como tocar música),
+// passe { method: "PUT", body: "..." } em "opcoes".
+async function spotify(caminho, opcoes = {}) {
   const token = await tokenValido();
   if (!token) return null;
 
   const resposta = await fetch(`https://api.spotify.com/v1${caminho}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    ...opcoes,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
   });
-  const dados = await resposta.json();
+
+  // Algumas respostas (como a de "tocar") vêm vazias, então lemos como texto
+  const texto = await resposta.text();
+  let dados = null;
+  try {
+    dados = texto ? JSON.parse(texto) : null;
+  } catch {
+    dados = { error: texto };
+  }
+
   return { ok: resposta.ok, status: resposta.status, dados };
 }
 
@@ -111,21 +127,30 @@ async function sincronizar() {
 
   const inserir = db.prepare(`
     INSERT OR IGNORE INTO plays
-      (track_id, musica, artista, tocada_em, origem, origem_uri)
-    VALUES (?, ?, ?, ?, ?, ?)
+      (track_id, musica, artista, tocada_em, origem, origem_uri, capa)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
+  // Plays antigos ainda sem capa ganham a capa quando a música aparece de novo
+  const guardarCapa = db.prepare(
+    "UPDATE plays SET capa = ? WHERE track_id = ? AND capa IS NULL"
+  );
 
   let novas = 0;
   for (const item of r.dados.items) {
+    const imagens = item.track.album?.images;
+    const capa = imagens?.[1]?.url || imagens?.[0]?.url || null;
+
     const resultado = inserir.run(
       item.track.id,
       item.track.name,
       item.track.artists.map((a) => a.name).join(", "),
       item.played_at,
       item.context ? item.context.type : null,
-      item.context ? item.context.uri : null
+      item.context ? item.context.uri : null,
+      capa
     );
     novas += resultado.changes;
+    if (capa) guardarCapa.run(capa, item.track.id);
   }
 
   const total = db.prepare("SELECT COUNT(*) AS total FROM plays").get().total;
@@ -284,6 +309,7 @@ app.get("/ranking-playlists", async (req, res) => {
     const resultado = ranking.map((linha) => ({
       nome: infoPorUri[linha.origem_uri]?.nome || "Playlist desconhecida",
       capa: infoPorUri[linha.origem_uri]?.capa || null,
+      uri: linha.origem_uri,
       plays: linha.plays,
       musicaMaisTocada: maisTocada.get(linha.origem_uri),
     }));
@@ -295,20 +321,144 @@ app.get("/ranking-playlists", async (req, res) => {
   }
 });
 
-app.get("/top", (req, res) => {
-  const top = db
-    .prepare(
-      `
-      SELECT musica, artista, COUNT(*) AS plays
-      FROM plays
-      GROUP BY track_id, musica, artista
-      ORDER BY plays DESC
-      LIMIT 10
-    `
-    )
-    .all();
+app.post("/tocar", async (req, res) => {
+  const { uri } = req.body || {};
 
-  res.json(top);
+  // Validação: só aceita endereços no formato spotify:playlist:CODIGO
+  if (typeof uri !== "string" || !/^spotify:playlist:[A-Za-z0-9]+$/.test(uri)) {
+    return res.status(400).json({ erro: "Playlist inválida." });
+  }
+
+  try {
+    const r = await spotify("/me/player/play", {
+      method: "PUT",
+      body: JSON.stringify({ context_uri: uri }),
+    });
+
+    if (!r) return res.status(401).json({ erro: "Faça login primeiro (botão 👤)." });
+    if (r.ok) return res.json({ ok: true });
+
+    console.error("Erro do Spotify ao tocar:", r.status, r.dados?.error);
+
+    if (r.status === 404) {
+      return res.status(404).json({
+        erro: "Nenhum dispositivo ativo. Abra o Spotify no PC ou no celular, toque qualquer música por um segundo e tente de novo.",
+      });
+    }
+    if (r.status === 403) {
+      return res.status(403).json({
+        erro: "O Spotify recusou. Confira se a conta é Premium e se o login foi feito com as permissões novas.",
+      });
+    }
+    res.status(r.status).json({ erro: "Não consegui tocar essa playlist." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Algo deu errado no servidor." });
+  }
+});
+
+// Mostra o que está tocando agora (a página consulta isso de poucos em poucos segundos)
+app.get("/player", async (req, res) => {
+  try {
+    const r = await spotify("/me/player");
+    if (!r) return res.status(401).json({ erro: "Faça login primeiro." });
+
+    if (!r.ok) {
+      console.error("Erro do Spotify no player:", r.status, r.dados?.error);
+      return res.status(r.status).json({ erro: "Não consegui ler o player." });
+    }
+
+    // Resposta vazia (204) = nenhum aparelho ativo no momento
+    const d = r.dados;
+    if (r.status === 204 || !d || !d.item) return res.json({ ativo: false });
+
+    const imagens = d.item.album?.images || [];
+    res.json({
+      ativo: true,
+      tocando: d.is_playing,
+      musica: d.item.name,
+      artista: (d.item.artists || []).map((a) => a.name).join(", "),
+      capa: imagens[1]?.url || imagens[0]?.url || null,
+      progressoMs: d.progress_ms,
+      duracaoMs: d.item.duration_ms,
+      contextoUri: d.context?.uri || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Algo deu errado no servidor." });
+  }
+});
+
+// Botões do player: pausar, continuar, próxima e anterior.
+// Só aceita as 4 ações da lista abaixo, qualquer outra coisa é recusada.
+const ACOES = {
+  pausar: { caminho: "/me/player/pause", method: "PUT" },
+  continuar: { caminho: "/me/player/play", method: "PUT" },
+  proxima: { caminho: "/me/player/next", method: "POST" },
+  anterior: { caminho: "/me/player/previous", method: "POST" },
+};
+
+app.post("/controle", async (req, res) => {
+  const acao = req.body?.acao;
+
+  if (typeof acao !== "string" || !Object.hasOwn(ACOES, acao)) {
+    return res.status(400).json({ erro: "Ação inválida." });
+  }
+
+  try {
+    const { caminho, method } = ACOES[acao];
+    const r = await spotify(caminho, { method });
+
+    if (!r) return res.status(401).json({ erro: "Faça login primeiro (botão 👤)." });
+    if (r.ok) return res.json({ ok: true });
+
+    console.error("Erro do Spotify no controle:", r.status, r.dados?.error);
+    if (r.status === 404) {
+      return res.status(404).json({
+        erro: "Nenhum dispositivo ativo. Abra o Spotify e toque qualquer música por um segundo.",
+      });
+    }
+    res.status(r.status).json({ erro: "O Spotify não conseguiu fazer isso agora." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Algo deu errado no servidor." });
+  }
+});
+
+app.get("/top", async (req, res) => {
+  try {
+    const top = db
+      .prepare(
+        `
+        SELECT track_id, musica, artista, COUNT(*) AS plays, MAX(capa) AS capa
+        FROM plays
+        GROUP BY track_id, musica, artista
+        ORDER BY plays DESC
+        LIMIT 10
+      `
+      )
+      .all();
+
+    // Músicas do top sem capa guardada: busca uma por uma e guarda no banco.
+    // (O Spotify não deixa mais buscar várias músicas de uma vez.)
+    const salvarCapa = db.prepare("UPDATE plays SET capa = ? WHERE track_id = ?");
+    for (const m of top) {
+      if (m.capa) continue;
+
+      const r = await spotify(`/tracks/${m.track_id}`);
+      if (!r) break; // sem login: segue sem capas
+      if (!r.ok) continue;
+
+      const imagens = r.dados.album?.images;
+      m.capa = imagens?.[1]?.url || imagens?.[0]?.url || null;
+      if (m.capa) salvarCapa.run(m.capa, m.track_id);
+    }
+
+    res.json(top);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Algo deu errado no servidor.");
+  }
 });
 
 const INTERVALO_MINUTOS = 15;
