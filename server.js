@@ -321,18 +321,83 @@ app.get("/ranking-playlists", async (req, res) => {
   }
 });
 
+// Dados e músicas de uma playlist (a tela de dentro da playlist usa isso)
+app.get("/playlist/:id", async (req, res) => {
+  const { id } = req.params;
+
+  // O código de uma playlist só tem letras e números
+  if (!/^[A-Za-z0-9]+$/.test(id)) {
+    return res.status(400).json({ erro: "Playlist inválida." });
+  }
+
+  try {
+    const r = await spotify(`/playlists/${id}`);
+    if (!r) return res.status(401).json({ erro: "Faça login primeiro." });
+
+    if (!r.ok) {
+      console.error("Erro do Spotify na playlist:", r.status, r.dados?.error);
+      return res.status(r.status).json({ erro: "Não consegui abrir essa playlist." });
+    }
+
+    const p = r.dados;
+
+    // Desde fev/2026 o Spotify chama de "items" (antes era "tracks") e, em cada
+    // linha, de "item" (antes "track"). Só vem pra playlists suas ou colaborativas.
+    const entradas = p.items?.items;
+
+    const musicas = (entradas || [])
+      .map((entrada) => entrada.item || entrada.track)
+      .filter((faixa) => faixa && faixa.id && faixa.type === "track")
+      .map((faixa) => {
+        const imagens = faixa.album?.images || [];
+        return {
+          uri: faixa.uri,
+          nome: faixa.name,
+          artista: (faixa.artists || []).map((a) => a.name).join(", "),
+          album: faixa.album?.name || "",
+          capa: imagens[2]?.url || imagens[1]?.url || imagens[0]?.url || null,
+          duracaoMs: faixa.duration_ms,
+        };
+      });
+
+    res.json({
+      uri: p.uri,
+      nome: p.name,
+      dono: p.owner?.display_name || null,
+      capa: p.images?.[0]?.url || null,
+      total: p.items?.total ?? null,
+      conteudoDisponivel: Boolean(entradas),
+      musicas,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Algo deu errado no servidor." });
+  }
+});
+
 app.post("/tocar", async (req, res) => {
-  const { uri } = req.body || {};
+  const { uri, faixa } = req.body || {};
 
   // Validação: só aceita endereços no formato spotify:playlist:CODIGO
   if (typeof uri !== "string" || !/^spotify:playlist:[A-Za-z0-9]+$/.test(uri)) {
     return res.status(400).json({ erro: "Playlist inválida." });
   }
 
+  // "faixa" é opcional (música específica dentro da playlist): spotify:track:CODIGO
+  if (
+    faixa !== undefined &&
+    (typeof faixa !== "string" || !/^spotify:track:[A-Za-z0-9]+$/.test(faixa))
+  ) {
+    return res.status(400).json({ erro: "Música inválida." });
+  }
+
   try {
+    const corpo = { context_uri: uri };
+    if (faixa) corpo.offset = { uri: faixa }; // começa a tocar a partir dessa música
+
     const r = await spotify("/me/player/play", {
       method: "PUT",
-      body: JSON.stringify({ context_uri: uri }),
+      body: JSON.stringify(corpo),
     });
 
     if (!r) return res.status(401).json({ erro: "Faça login primeiro (botão 👤)." });
@@ -377,6 +442,7 @@ app.get("/player", async (req, res) => {
       ativo: true,
       tocando: d.is_playing,
       musica: d.item.name,
+      faixaUri: d.item.uri,
       artista: (d.item.artists || []).map((a) => a.name).join(", "),
       capa: imagens[1]?.url || imagens[0]?.url || null,
       progressoMs: d.progress_ms,

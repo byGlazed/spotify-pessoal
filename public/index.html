@@ -28,9 +28,35 @@
 
     <!-- CENTRO: RANKING DE PLAYLISTS (preenchido pelo app.js) -->
     <main class="principal">
-      <h2 class="titulo-secao">Rank das suas playlists mais tocadas:</h2>
       <p id="mensagem" class="aviso"></p>
-      <ul id="lista-playlists"></ul>
+
+      <!-- Tela 1: ranking das playlists -->
+      <section id="tela-ranking">
+        <h2 class="titulo-secao">Rank das suas playlists mais tocadas:</h2>
+        <ul id="lista-playlists"></ul>
+      </section>
+
+      <!-- Tela 2: dentro de uma playlist (começa escondida) -->
+      <section id="tela-playlist" hidden>
+        <button id="btn-voltar" class="botao-voltar">← Voltar</button>
+
+        <div class="cabecalho-playlist">
+          <div id="playlist-disco" class="disco gigante">
+            <img id="playlist-capa" class="capa" alt="" style="visibility: hidden" />
+          </div>
+          <div class="info">
+            <span>Playlist</span>
+            <h1 id="playlist-nome"></h1>
+            <span id="playlist-detalhe"></span>
+          </div>
+        </div>
+
+        <div class="acoes-playlist">
+          <button id="playlist-play" class="botao-play grande" title="Tocar / Pausar">▶</button>
+        </div>
+
+        <div id="playlist-faixas"></div>
+      </section>
     </main>
 
     <!-- RODAPÉ: PLAYER -->

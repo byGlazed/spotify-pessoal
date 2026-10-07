@@ -1,309 +1,421 @@
 /* ---------- Cores e configurações gerais ---------- */
 :root {
-  --verde: #1db954;
-  --fundo: #303030;
-  --fundo-lateral: #262626;
-  --cinza-claro: #d9d9d9;
-  --texto: #ffffff;
-  --texto-fraco: #b3b3b3;
+    --verde: #1db954;
+    --fundo: #303030;
+    --fundo-lateral: #262626;
+    --cinza-claro: #d9d9d9;
+    --texto: #ffffff;
+    --texto-fraco: #b3b3b3;
 }
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-  height: 100vh;
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: var(--fundo);
-  color: var(--texto);
+    height: 100vh;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--fundo);
+    color: var(--texto);
 
-  /* A tela é dividida em 4 áreas: topo, lateral, centro e player */
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  grid-template-rows: 56px 1fr 88px;
-  grid-template-areas:
-    "topo topo"
-    "lateral principal"
-    "player player";
+    /* A tela é dividida em 4 áreas: topo, lateral, centro e player */
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 56px 1fr 88px;
+    grid-template-areas:
+        "topo topo"
+        "lateral principal"
+        "player player";
 }
 
 /* ---------- Peças que se repetem ---------- */
 .botao-redondo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--verde);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--verde);
-  font-size: 18px;
-  text-decoration: none;
-  cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--verde);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--verde);
+    font-size: 18px;
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .botao-redondo:hover {
-  background: var(--verde);
-  color: var(--fundo);
+    background: var(--verde);
+    color: var(--fundo);
 }
 
 .capa {
-  flex-shrink: 0;
-  display: block;
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  background: var(--cinza-claro);
+    flex-shrink: 0;
+    display: block;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    background: var(--cinza-claro);
 }
 
 .info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .info strong,
 .info span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .info span {
-  color: var(--texto-fraco);
-  font-size: 14px;
+    color: var(--texto-fraco);
+    font-size: 14px;
 }
 
 .aviso {
-  color: var(--texto-fraco);
+    color: var(--texto-fraco);
 }
 
 /* ---------- Disco (vira vinil quando a playlist está tocando) ---------- */
 .disco {
-  position: relative;
-  flex-shrink: 0;
-  width: 96px;
-  height: 96px;
-  overflow: hidden;
-  background: var(--cinza-claro);
-  transition: border-radius 0.4s;
+    position: relative;
+    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    overflow: hidden;
+    background: var(--cinza-claro);
+    transition: border-radius 0.4s;
 }
 
 .disco.pequeno {
-  width: 56px;
-  height: 56px;
+    width: 56px;
+    height: 56px;
 }
 
 .disco .capa {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 }
 
 /* Playlist atual: a capa fica redonda e ganha o furinho do meio */
 .disco.ativo {
-  border-radius: 50%;
+    border-radius: 50%;
 }
 
 .disco.ativo::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 18%;
-  height: 18%;
-  transform: translate(-50%, -50%);
-  border: 2px solid #111;
-  border-radius: 50%;
-  background: var(--fundo);
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18%;
+    height: 18%;
+    transform: translate(-50%, -50%);
+    border: 2px solid #111;
+    border-radius: 50%;
+    background: var(--fundo);
 }
 
 /* E, enquanto estiver tocando, gira */
 .disco.ativo.girando {
-  animation: girar 6s linear infinite;
+    animation: girar 6s linear infinite;
 }
 
 @keyframes girar {
-  to {
-    transform: rotate(360deg);
-  }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ---------- Topo ---------- */
 .topo {
-  grid-area: topo;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 16px;
-  background: #ffffff;
+    grid-area: topo;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 16px;
+    background: #ffffff;
 }
 
 .topo-direita {
-  display: flex;
-  gap: 12px;
+    display: flex;
+    gap: 12px;
 }
 
 .busca {
-  width: 100%;
-  max-width: 460px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
-  background: var(--cinza-claro);
-  font-size: 16px;
+    width: 100%;
+    max-width: 460px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background: var(--cinza-claro);
+    font-size: 16px;
 }
 
 /* ---------- Lateral (top 10) ---------- */
 .lateral {
-  grid-area: lateral;
-  padding: 24px 16px;
-  background: var(--fundo-lateral);
-  border-right: 1px solid #444;
-  overflow-y: auto;
+    grid-area: lateral;
+    padding: 24px 16px;
+    background: var(--fundo-lateral);
+    border-right: 1px solid #444;
+    overflow-y: auto;
 }
 
 .lateral h2 {
-  margin-bottom: 20px;
-  color: var(--verde);
-  font-weight: 400;
+    margin-bottom: 20px;
+    color: var(--verde);
+    font-weight: 400;
 }
 
 .lateral ol {
-  list-style: none;
+    list-style: none;
 }
 
 .item-musica {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
 }
 
 .item-musica .info {
-  flex: 1;
+    flex: 1;
 }
 
 .contagem {
-  color: var(--texto-fraco);
+    color: var(--texto-fraco);
 }
 
 /* ---------- Centro (ranking de playlists) ---------- */
 .principal {
-  grid-area: principal;
-  padding: 32px 48px;
-  overflow-y: auto;
+    grid-area: principal;
+    padding: 32px 48px;
+    overflow-y: auto;
 }
 
 .titulo-secao {
-  margin-bottom: 12px;
-  color: var(--texto-fraco);
-  font-weight: 400;
+    margin-bottom: 12px;
+    color: var(--texto-fraco);
+    font-weight: 400;
 }
 
 #mensagem {
-  min-height: 1.4em;
-  margin-bottom: 20px;
+    min-height: 1.4em;
+    margin-bottom: 20px;
 }
 
 .principal ul {
-  list-style: none;
+    list-style: none;
 }
 
 .item-playlist {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
 /* ---------- Player (rodapé, no estilo do Spotify) ---------- */
 .player {
-  grid-area: player;
-  display: grid;
-  grid-template-columns: 1fr minmax(320px, 40%) 1fr;
-  align-items: center;
-  gap: 16px;
-  padding: 0 16px;
-  background: #181818;
-  border-top: 1px solid #333;
+    grid-area: player;
+    display: grid;
+    grid-template-columns: 1fr minmax(320px, 40%) 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    background: #181818;
+    border-top: 1px solid #333;
 }
 
 .player-musica {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
 }
 
 .player-centro {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .controles {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
 }
 
 .botao-controle {
-  border: none;
-  background: none;
-  color: var(--texto-fraco);
-  font-size: 20px;
-  cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--texto-fraco);
+    font-size: 20px;
+    cursor: pointer;
 }
 
 .botao-controle:hover {
-  color: #ffffff;
+    color: #ffffff;
 }
 
 .botao-play {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: #ffffff;
-  color: #000000;
-  font-size: 15px;
-  cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #000000;
+    font-size: 15px;
+    cursor: pointer;
 }
 
 .botao-play:hover {
-  transform: scale(1.08);
+    transform: scale(1.08);
 }
 
 .progresso {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  color: var(--texto-fraco);
-  font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    color: var(--texto-fraco);
+    font-size: 12px;
 }
 
 .barra {
-  flex: 1;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: #4d4d4d;
+    flex: 1;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: #4d4d4d;
 }
 
 #barra-preenchida {
-  width: 0;
-  height: 100%;
-  background: #ffffff;
+    width: 0;
+    height: 100%;
+    background: #ffffff;
 }
 
 .barra:hover #barra-preenchida {
-  background: var(--verde);
+    background: var(--verde);
+}
+
+/* ---------- Itens clicáveis ---------- */
+.clicavel {
+    cursor: pointer;
+}
+
+.info.clicavel:hover strong {
+    text-decoration: underline;
+}
+
+/* ---------- Tela de dentro da playlist ---------- */
+.botao-voltar {
+    margin-bottom: 20px;
+    padding: 6px 14px;
+    border: 1px solid #555;
+    border-radius: 20px;
+    background: none;
+    color: var(--texto-fraco);
+    cursor: pointer;
+}
+
+.botao-voltar:hover {
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.cabecalho-playlist {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.cabecalho-playlist h1 {
+    margin: 4px 0 8px;
+    font-size: 40px;
+    overflow-wrap: anywhere;
+}
+
+.cabecalho-playlist .info span {
+    white-space: normal;
+}
+
+.disco.gigante {
+    width: 200px;
+    height: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.acoes-playlist {
+    margin-bottom: 20px;
+}
+
+.botao-play.grande {
+    width: 56px;
+    height: 56px;
+    background: var(--verde);
+    font-size: 22px;
+}
+
+/* Lista de músicas (tabela no estilo do Spotify) */
+.faixa {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 3fr) minmax(0, 2fr) 80px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: var(--texto-fraco);
+}
+
+.faixa:not(.cabecalho) {
+    cursor: pointer;
+}
+
+.faixa:not(.cabecalho):hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.faixa.cabecalho {
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    border-radius: 0;
+    font-size: 13px;
+}
+
+.faixa-titulo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.faixa-titulo .info strong {
+    color: #ffffff;
+}
+
+.faixa .album {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.faixa .direita {
+    text-align: right;
+}
+
+/* Música que está tocando agora */
+.faixa.atual .numero,
+.faixa.atual .info strong {
+    color: var(--verde);
 }

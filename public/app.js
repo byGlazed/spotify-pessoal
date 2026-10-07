@@ -112,6 +112,13 @@ async function carregarRanking() {
       const info = criar("div", "info");
       info.append(criar("strong", null, p.nome), criar("span", null, detalhe));
 
+      // Clicar na capa ou no nome abre a tela de dentro da playlist
+      const abrir = () => abrirPlaylist(p.uri);
+      disco.classList.add("clicavel");
+      info.classList.add("clicavel");
+      disco.addEventListener("click", abrir);
+      info.addEventListener("click", abrir);
+
       item.append(engrenagem, tocar, disco, info);
       lista.append(item);
 
@@ -143,14 +150,15 @@ function cliqueNaPlaylist(uri) {
   }
 }
 
-async function tocarPlaylist(uri) {
+// "faixa" é opcional: se vier, começa a tocar a partir dessa música
+async function tocarPlaylist(uri, faixa) {
   mostrarMensagem("Pedindo ao Spotify pra tocar...");
 
   try {
     const resposta = await fetch("/tocar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uri }),
+      body: JSON.stringify({ uri, faixa }),
     });
     const dados = await resposta.json();
     mostrarMensagem(resposta.ok ? "" : dados.erro);
@@ -246,6 +254,7 @@ function desenharPlayer() {
     p.disco.classList.toggle("girando", eEssa && tocando);
   }
 
+  desenharTelaPlaylist();
   desenharProgresso();
 }
 
@@ -271,6 +280,128 @@ function desenharProgresso() {
   total.textContent = formatarTempo(estadoAtual.duracaoMs);
   barra.style.width = `${(ms / estadoAtual.duracaoMs) * 100}%`;
 }
+
+// ---------- Tela de dentro da playlist ----------
+
+let playlistAberta = null; // dados da playlist aberta (ou null se estiver no ranking)
+
+async function abrirPlaylist(uri) {
+  const id = uri.split(":")[2]; // "spotify:playlist:CODIGO" -> "CODIGO"
+  mostrarMensagem("Carregando playlist...");
+
+  try {
+    playlistAberta = await buscarJSON(`/playlist/${id}`);
+    mostrarMensagem("");
+    montarTelaPlaylist();
+  } catch (erro) {
+    console.error(erro);
+    mostrarMensagem("Não consegui abrir essa playlist.");
+  }
+}
+
+function voltarParaRanking() {
+  playlistAberta = null;
+  document.getElementById("tela-playlist").hidden = true;
+  document.getElementById("tela-ranking").hidden = false;
+}
+
+// Monta o cabeçalho e a lista de músicas
+function montarTelaPlaylist() {
+  const p = playlistAberta;
+  document.getElementById("tela-ranking").hidden = true;
+  document.getElementById("tela-playlist").hidden = false;
+
+  document.getElementById("playlist-nome").textContent = p.nome;
+
+  const capa = document.getElementById("playlist-capa");
+  if (p.capa) {
+    capa.src = p.capa;
+    capa.style.visibility = "visible";
+  } else {
+    capa.style.visibility = "hidden";
+  }
+
+  const detalhes = [p.dono, p.total !== null ? `${p.total} músicas` : null];
+  document.getElementById("playlist-detalhe").textContent = detalhes
+    .filter(Boolean)
+    .join(" • ");
+
+  const lista = document.getElementById("playlist-faixas");
+  lista.replaceChildren();
+
+  if (!p.conteudoDisponivel) {
+    lista.append(
+      criar(
+        "p",
+        "aviso",
+        "O Spotify só deixa ver as músicas de playlists que são suas ou colaborativas."
+      )
+    );
+  } else {
+    const cabecalho = criar("div", "faixa cabecalho");
+    cabecalho.append(
+      criar("span", null, "#"),
+      criar("span", null, "Título"),
+      criar("span", null, "Álbum"),
+      criar("span", "direita", "Duração")
+    );
+    lista.append(cabecalho);
+
+    p.musicas.forEach((m, i) => {
+      const linha = criar("div", "faixa");
+      linha.dataset.uri = m.uri;
+
+      const info = criar("div", "info");
+      info.append(criar("strong", null, m.nome), criar("span", null, m.artista));
+
+      const titulo = criar("div", "faixa-titulo");
+      titulo.append(criarCapa(m.capa), info);
+
+      linha.append(
+        criar("span", "numero", i + 1),
+        titulo,
+        criar("span", "album", m.album),
+        criar("span", "direita", formatarTempo(m.duracaoMs))
+      );
+
+      // Clicar na linha toca a playlist a partir dessa música
+      linha.addEventListener("click", () => tocarPlaylist(p.uri, m.uri));
+      lista.append(linha);
+    });
+
+    if (p.total !== null && p.total > p.musicas.length) {
+      lista.append(
+        criar("p", "aviso", `Mostrando as primeiras ${p.musicas.length} músicas.`)
+      );
+    }
+  }
+
+  desenharTelaPlaylist();
+}
+
+// Atualiza o que muda enquanto a música toca: botão, vinil e linha atual
+function desenharTelaPlaylist() {
+  if (!playlistAberta) return;
+
+  const ativo = Boolean(estadoAtual && estadoAtual.ativo);
+  const eEssa = ativo && estadoAtual.contextoUri === playlistAberta.uri;
+  const tocando = eEssa && estadoAtual.tocando;
+
+  document.getElementById("playlist-play").textContent = tocando ? "⏸" : "▶";
+
+  const disco = document.getElementById("playlist-disco");
+  disco.classList.toggle("ativo", eEssa);
+  disco.classList.toggle("girando", tocando);
+
+  for (const linha of document.querySelectorAll("#playlist-faixas .faixa[data-uri]")) {
+    linha.classList.toggle("atual", eEssa && linha.dataset.uri === estadoAtual.faixaUri);
+  }
+}
+
+document.getElementById("btn-voltar").addEventListener("click", voltarParaRanking);
+document.getElementById("playlist-play").addEventListener("click", () => {
+  if (playlistAberta) cliqueNaPlaylist(playlistAberta.uri);
+});
 
 // ---------- Começa tudo quando a página abre ----------
 
